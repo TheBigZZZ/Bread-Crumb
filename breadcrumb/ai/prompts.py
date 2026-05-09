@@ -46,7 +46,7 @@ def get_system_prompt(command: str, custom: str = "") -> str:
     """Get system prompt for a command, with optional custom override."""
     if custom:
         return custom
-    
+
     prompts = {
         "chat": SYSTEM_PROMPT_DEFAULT,
         "ask": SYSTEM_PROMPT_DEFAULT,
@@ -56,5 +56,5 @@ def get_system_prompt(command: str, custom: str = "") -> str:
         "diff": SYSTEM_PROMPT_DIFF,
         "digest": SYSTEM_PROMPT_DIGEST,
     }
-    
+
     return prompts.get(command, SYSTEM_PROMPT_DEFAULT)

@@ -4,15 +4,16 @@ Interactive chat with the codebase using a TUI.
 
 from pathlib import Path
 from typing import Optional
+
 from rich.console import Console
-from rich.prompt import Prompt
 from rich.panel import Panel
-from rich.markdown import Markdown
+from rich.prompt import Prompt
 from rich.rule import Rule
-from breadcrumb.ingest import FileIngester
-from breadcrumb.ai.router import AIRouter
+
 from breadcrumb.ai.prompts import get_system_prompt
+from breadcrumb.ai.router import AIRouter
 from breadcrumb.history import SessionManager
+from breadcrumb.ingest import FileIngester
 
 console = Console()
 
@@ -24,7 +25,7 @@ def cmd_chat(
 ) -> None:
     """
     Interactive chat session with the codebase.
-    
+
     Args:
         repo_path: Repository path
         provider: AI provider (overrides config)
@@ -41,12 +42,16 @@ def cmd_chat(
         console.print(f"[red]Error reading repository: {e}[/red]")
         context = ""
 
-    console.print(Panel.fit(
-        "[bold cyan]🍞 Bread Crumb[/bold cyan]\n"
-        f"[dim]Chat with your codebase using {router.provider}[/dim]",
-        border_style="cyan"
-    ))
-    console.print(f"[dim]Session: {session_name} | Provider: {router.provider} | Model: {router.model}[/dim]")
+    console.print(
+        Panel.fit(
+            "[bold cyan]🍞 Bread Crumb[/bold cyan]\n"
+            f"[dim]Chat with your codebase using {router.provider}[/dim]",
+            border_style="cyan",
+        )
+    )
+    console.print(
+        f"[dim]Session: {session_name} | Provider: {router.provider} | Model: {router.model}[/dim]"
+    )
     console.print("[dim]Type 'exit' to quit, 'clear' to clear history[/dim]")
     console.print(Rule())
 
@@ -88,14 +93,11 @@ def cmd_chat(
 
         # Build messages for API
         system = get_system_prompt("chat")
-        
+
         # Include context only in first message of session
         if len(session.messages) <= 1:
             api_messages = [
-                {
-                    "role": "user",
-                    "content": f"Repo context:\n{context}\n\nQuestion: {question}"
-                }
+                {"role": "user", "content": f"Repo context:\n{context}\n\nQuestion: {question}"}
             ]
         else:
             api_messages = session.get_messages_for_api()

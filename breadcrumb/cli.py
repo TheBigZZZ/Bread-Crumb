@@ -5,13 +5,15 @@ Wires all commands together.
 
 import sys
 from pathlib import Path
+
 import click
+
 from breadcrumb import __version__
-from breadcrumb.commands.chat import cmd_chat
 from breadcrumb.commands.ask import cmd_ask
 from breadcrumb.commands.audit import cmd_audit
-from breadcrumb.commands.diff import cmd_diff
+from breadcrumb.commands.chat import cmd_chat
 from breadcrumb.commands.commit import cmd_commit
+from breadcrumb.commands.diff import cmd_diff
 from breadcrumb.commands.explain_error import cmd_explain_error
 from breadcrumb.commands.init import cmd_init
 from breadcrumb.config import Config

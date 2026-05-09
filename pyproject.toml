@@ -45,8 +45,8 @@ dependencies = ["pytest", "pytest-cov", "ruff", "mypy"]
 [tool.hatch.envs.default.scripts]
 test = "pytest tests/ -v"
 cov = "pytest tests/ --cov=breadcrumb --cov-report=term-missing"
-lint = "ruff check ."
-format = "ruff format ."
+lint = "ruff check breadcrumb tests"
+format = "ruff format breadcrumb tests"
 type-check = "mypy breadcrumb/ --no-error-summary 2>/dev/null || true"
 
 [tool.ruff]

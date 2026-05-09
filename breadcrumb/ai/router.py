@@ -3,7 +3,8 @@ AI provider routing and message handling.
 Supports Anthropic, OpenAI, Gemini, and Ollama.
 """
 
-from typing import Optional, AsyncIterator, Iterator
+from typing import Iterator, Optional
+
 from breadcrumb.config import Config
 
 
@@ -129,7 +130,9 @@ class AIRouter:
         try:
             import google.generativeai as genai
         except ImportError:
-            raise ImportError("google-generativeai package required. Install: pip install google-generativeai")
+            raise ImportError(
+                "google-generativeai package required. Install: pip install google-generativeai"
+            )
 
         genai.configure(api_key=self.api_key)
         model = genai.GenerativeModel(self.model, system_instruction=system)
@@ -141,7 +144,9 @@ class AIRouter:
         try:
             import google.generativeai as genai
         except ImportError:
-            raise ImportError("google-generativeai package required. Install: pip install google-generativeai")
+            raise ImportError(
+                "google-generativeai package required. Install: pip install google-generativeai"
+            )
 
         genai.configure(api_key=self.api_key)
         model = genai.GenerativeModel(self.model, system_instruction=system)

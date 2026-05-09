@@ -6,12 +6,13 @@ Ask a question and get an answer in one go.
 import sys
 from pathlib import Path
 from typing import Optional
+
 from rich.console import Console
 from rich.markdown import Markdown
-from breadcrumb.ingest import FileIngester
-from breadcrumb.ai.router import AIRouter
+
 from breadcrumb.ai.prompts import get_system_prompt
-from breadcrumb.config import Config
+from breadcrumb.ai.router import AIRouter
+from breadcrumb.ingest import FileIngester
 
 console = Console()
 
@@ -26,7 +27,7 @@ def cmd_ask(
 ) -> str:
     """
     Ask a one-shot question about the repository.
-    
+
     Args:
         repo_path: Repository path
         question: The question to ask
@@ -34,13 +35,13 @@ def cmd_ask(
         model: Model name (overrides config)
         format: Output format ('text' or 'markdown')
         pipe: If True, read question from stdin if not provided
-    
+
     Returns:
         The AI response
     """
     if not question and pipe:
         question = sys.stdin.read()
-    
+
     if not question:
         console.print("[red]Error: No question provided[/red]")
         return ""
@@ -49,7 +50,7 @@ def cmd_ask(
     try:
         ingester = FileIngester(repo_path)
         context = ingester.get_content()
-        
+
         if not context:
             console.print("[yellow]Warning: No code files found in repository[/yellow]")
     except Exception as e:
@@ -87,7 +88,11 @@ Question: {question}"""
         console.print(response_text)
 
     # Show token usage
-    total_tokens = router.count_tokens(context) + router.count_tokens(question) + router.count_tokens(response_text)
+    total_tokens = (
+        router.count_tokens(context)
+        + router.count_tokens(question)
+        + router.count_tokens(response_text)
+    )
     console.print(f"\n[dim]~{total_tokens:,} tokens used[/dim]")
 
     return response_text

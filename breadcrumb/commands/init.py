@@ -3,6 +3,7 @@ Initialize a .breadcrumb.yaml config file for a repository.
 """
 
 from pathlib import Path
+
 from rich.console import Console
 
 console = Console()
@@ -43,19 +44,19 @@ max_tokens: 4096
 def cmd_init(repo_path: Path) -> bool:
     """
     Initialize a .breadcrumb.yaml config file in the repository.
-    
+
     Args:
         repo_path: Repository path
-    
+
     Returns:
         True if successful
     """
     config_file = repo_path / ".breadcrumb.yaml"
-    
+
     if config_file.exists():
         console.print("[yellow].breadcrumb.yaml already exists[/yellow]")
         return False
-    
+
     try:
         config_file.write_text(BREADCRUMB_YAML_TEMPLATE)
         console.print(f"[green]✓ Created {config_file}[/green]")

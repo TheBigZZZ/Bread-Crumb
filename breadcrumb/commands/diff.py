@@ -5,10 +5,12 @@ Review git diffs with AI.
 import subprocess
 from pathlib import Path
 from typing import Optional
+
 from rich.console import Console
 from rich.markdown import Markdown
-from breadcrumb.ai.router import AIRouter
+
 from breadcrumb.ai.prompts import get_system_prompt
+from breadcrumb.ai.router import AIRouter
 
 console = Console()
 
@@ -43,17 +45,17 @@ def cmd_diff(
 ) -> str:
     """
     Review a git diff with AI.
-    
+
     Args:
         repo_path: Repository path
         revision: Git revision (e.g., 'HEAD~1', 'main..feature/auth')
         provider: AI provider (overrides config)
-    
+
     Returns:
         The review
     """
     diff = get_git_diff(repo_path, revision)
-    
+
     if not diff:
         console.print("[yellow]No changes found for the specified revision[/yellow]")
         return ""
@@ -64,7 +66,7 @@ def cmd_diff(
 
     router = AIRouter(provider)
     system = get_system_prompt("diff")
-    
+
     prompt = f"""Review this git diff and provide:
 1. Summary of changes
 2. Any potential issues or bugs
@@ -80,7 +82,7 @@ def cmd_diff(
         with console.status("[bold cyan]Reviewing diff...", spinner="dots"):
             for chunk in router.stream(messages, system):
                 response_text += chunk
-        
+
         console.print(Markdown(response_text))
         return response_text
     except Exception as e:

@@ -2,8 +2,11 @@
 Export chat sessions as shareable HTML.
 """
 
+# ruff: noqa: W293
+
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List, Optional
+
 from rich.console import Console
 
 console = Console()
@@ -147,7 +150,7 @@ def generate_html(title: str, messages: List[Dict]) -> str:
     for msg in messages:
         role = msg.get("role", "unknown")
         content = msg.get("content", "").replace("<", "&lt;").replace(">", "&gt;")
-        
+
         html += f"""            <div class="message {role}">
                 <div class="role">{role}</div>
                 <div class="content">{content}</div>
@@ -170,33 +173,33 @@ def generate_html(title: str, messages: List[Dict]) -> str:
 def cmd_share(session_file: Path, output_file: Optional[Path] = None) -> Optional[Path]:
     """
     Export a chat session as shareable HTML.
-    
+
     Args:
         session_file: Path to session JSON file
         output_file: Where to save the HTML (default: session.html)
-    
+
     Returns:
         Path to created HTML file
     """
     import json
-    
+
     if not session_file.exists():
         console.print(f"[red]Session file not found: {session_file}[/red]")
         return None
-    
+
     try:
         data = json.loads(session_file.read_text())
         messages = data.get("messages", [])
     except Exception as e:
         console.print(f"[red]Error reading session: {e}[/red]")
         return None
-    
+
     title = f"Bread Crumb Chat - {data.get('session', 'default')}"
     html = generate_html(title, messages)
-    
+
     if not output_file:
         output_file = session_file.parent / f"{session_file.stem}.html"
-    
+
     try:
         output_file.write_text(html)
         console.print(f"[green]✓ Exported to {output_file}[/green]")

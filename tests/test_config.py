@@ -2,8 +2,6 @@
 Test configuration management.
 """
 
-import tempfile
-from pathlib import Path
 from breadcrumb.config import Config
 
 
