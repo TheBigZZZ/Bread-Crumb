@@ -7,6 +7,10 @@ import sys
 from pathlib import Path
 
 import click
+from rich import box
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 
 from breadcrumb import __version__
 from breadcrumb.commands.ask import cmd_ask
@@ -18,6 +22,34 @@ from breadcrumb.commands.explain_error import cmd_explain_error
 from breadcrumb.commands.init import cmd_init
 from breadcrumb.config import Config
 
+console = Console()
+
+
+def show_startup_screen() -> None:
+    """Show a rich landing screen when the CLI is started without a command."""
+    console.print()
+    console.print(
+        Panel.fit(
+            "[bold cyan]🍞 Bread Crumb[/bold cyan]\n"
+            "[dim]Chat with your codebase from the terminal.[/dim]",
+            border_style="cyan",
+            padding=(1, 2),
+        )
+    )
+
+    table = Table(box=box.SIMPLE, show_header=False, expand=False, padding=(0, 1))
+    table.add_row("[cyan]ask[/cyan]", "Ask a one-shot question about the codebase")
+    table.add_row("[cyan]audit[/cyan]", "Run a security and architecture audit")
+    table.add_row("[cyan]chat[/cyan]", "Interactive chat with your codebase")
+    table.add_row("[cyan]diff[/cyan]", "Review a git diff with AI")
+    table.add_row("[cyan]commit[/cyan]", "Generate a conventional commit message")
+    table.add_row("[cyan]config[/cyan]", "Manage global configuration")
+    table.add_row("[cyan]init[/cyan]", "Initialize .breadcrumb.yaml in the repository")
+    console.print(table)
+    console.print(
+        "[dim]Run [cyan]breadcrumb --help[/cyan] for all options or [cyan]breadcrumb chat .[/cyan] to start chatting.[/dim]"
+    )
+
 
 @click.group(invoke_without_command=True)
 @click.version_option(version=__version__)
@@ -26,7 +58,7 @@ def cli(ctx):
     """🍞 Bread Crumb — Chat with your codebase."""
     # If no command, show help
     if ctx.invoked_subcommand is None:
-        click.echo(ctx.get_help())
+        show_startup_screen()
 
 
 @cli.command()
