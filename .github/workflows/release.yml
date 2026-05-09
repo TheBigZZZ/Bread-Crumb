@@ -74,11 +74,23 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install pyinstaller
+          pip install pyinstaller -e .
       
       - name: Build with PyInstaller
         run: |
-          pyinstaller --onefile --name ${{ matrix.name }} breadcrumb/cli.py
+          pyinstaller --onefile \
+            --name ${{ matrix.name }} \
+            --hidden-import=rich \
+            --hidden-import=click \
+            --hidden-import=anthropic \
+            --hidden-import=openai \
+            --hidden-import=google.generativeai \
+            --hidden-import=ollama \
+            --hidden-import=pathspec \
+            --hidden-import=pydantic \
+            --hidden-import=git \
+            --collect-all=breadcrumb \
+            breadcrumb/cli.py
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
