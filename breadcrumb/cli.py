@@ -165,10 +165,39 @@ def main():
     try:
         cli()
     except KeyboardInterrupt:
-        click.echo("\n")
+        console.print("\n[dim]Interrupted by user[/dim]")
         sys.exit(0)
+    except FileNotFoundError as e:
+        console.print(f"[red]✗ Error:[/red] Repository or file not found: {e}")
+        console.print("[dim]Make sure the path exists and you have read permissions.[/dim]")
+        sys.exit(1)
+    except PermissionError as e:
+        console.print(f"[red]✗ Error:[/red] Permission denied: {e}")
+        console.print("[dim]Make sure you have read permissions for the repository.[/dim]")
+        sys.exit(1)
+    except ValueError as e:
+        # Common error: API key not configured
+        if "api_key" in str(e).lower() or "key" in str(e).lower():
+            console.print("[red]✗ Error:[/red] API key not configured")
+            console.print()
+            console.print("[yellow]Setup your AI provider:[/yellow]")
+            console.print("  breadcrumb config set-key provider anthropic")
+            console.print("  breadcrumb config set-key anthropic_key sk-ant-...")
+            console.print()
+            console.print("[dim]Supported providers: anthropic, openai, gemini, ollama[/dim]")
+        else:
+            console.print(f"[red]✗ Error:[/red] {e}")
+        sys.exit(1)
     except Exception as e:
-        click.echo(f"Error: {e}", err=True)
+        error_msg = str(e)
+        console.print(f"[red]✗ Error:[/red] {error_msg}")
+        if "Connection" in str(type(e).__name__) or "Network" in str(type(e).__name__):
+            console.print("[dim]Network error. Check your internet connection and API key.[/dim]")
+        elif "401" in error_msg or "Unauthorized" in error_msg:
+            console.print("[dim]Invalid API key or authentication failed.[/dim]")
+            console.print("[yellow]Run: breadcrumb config show[/yellow] to check your settings")
+        elif "404" in error_msg:
+            console.print("[dim]Resource not found. Check the repository path or API endpoint.[/dim]")
         sys.exit(1)
 
 
