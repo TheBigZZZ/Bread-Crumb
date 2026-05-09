@@ -5,19 +5,27 @@ Install:  pip install rich
 Run:      python breadcrumb.py [repo_path]
 """
 
-import os, sys, time, json, random, hashlib, argparse
+ # ruff: noqa: E501
+
+import argparse
+import hashlib
+import json
+import random
+import sys
+import time
 from datetime import datetime
 from pathlib import Path
-from rich.console import Console
-from rich.prompt import Prompt
-from rich.panel import Panel
-from rich.markdown import Markdown
-from rich.table import Table
-from rich.live import Live
-from rich.text import Text
-from rich.rule import Rule
-from rich.tree import Tree
+
 from rich import box
+from rich.console import Console
+from rich.live import Live
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.prompt import Prompt
+from rich.rule import Rule
+from rich.table import Table
+from rich.text import Text
+from rich.tree import Tree
 
 console = Console()
 
@@ -47,8 +55,10 @@ def load_config():
     APP_DIR.mkdir(exist_ok=True)
     HISTORY_DIR.mkdir(exist_ok=True)
     if CONFIG_FILE.exists():
-        try: return json.loads(CONFIG_FILE.read_text())
-        except: pass
+        try:
+            return json.loads(CONFIG_FILE.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
     return {"api_key": "", "provider": "anthropic", "model": "claude-sonnet-4-6"}
 
 def save_config(cfg):
@@ -63,8 +73,10 @@ def history_path(root):
 def load_history(root):
     p = history_path(root)
     if p.exists():
-        try: return json.loads(p.read_text())
-        except: pass
+        try:
+            return json.loads(p.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
     return []
 
 def save_history(root, history):
@@ -87,8 +99,10 @@ def ingest_repo(root, focus=None):
         and should_include(p)
     )
     for path in all_files:
-        try: content = path.read_text(errors="replace")
-        except: continue
+        try:
+            content = path.read_text(errors="replace")
+        except OSError:
+            continue
         if len(content) > MAX_FILE_SIZE:
             content = content[:MAX_FILE_SIZE] + "\n...[truncated]"
         rel   = path.relative_to(root)
@@ -104,12 +118,36 @@ def ingest_repo(root, focus=None):
 # ── Animations ─────────────────────────────────────────────────────────────────
 def animate_banner():
     lines = [
-        (" ██████╗ ██████╗ ███████╗ █████╗ ██████╗      ██████╗██████╗ ██╗   ██╗███╗   ███╗██████╗ ", "bold cyan"),
-        ("██╔══██╗██╔══██╗██╔════╝██╔══██╗██╔══██╗    ██╔════╝██╔══██╗██║   ██║████╗ ████║██╔══██╗", "bold cyan"),
-        ("██████╔╝██████╔╝█████╗  ███████║██║  ██║    ██║     ██████╔╝██║   ██║██╔████╔██║██████╔╝", "cyan"),
-        ("██╔══██╗██╔══██╗██╔══╝  ██╔══██║██║  ██║    ██║     ██╔══██╗██║   ██║██║╚██╔╝██║██╔══██╗", "cyan"),
-        ("██████╔╝██║  ██║███████╗██║  ██║██████╔╝    ╚██████╗██║  ██║╚██████╔╝██║ ╚═╝ ██║██████╔╝", "dim cyan"),
-        ("╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═════╝      ╚═════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝╚═════╝ ", "dim cyan"),
+        (
+            " ██████╗ ██████╗ ███████╗ █████╗ ██████╗      ██████╗██████╗ ██╗   ██╗"
+            "███╗   ███╗██████╗ ",
+            "bold cyan",
+        ),
+        (
+            "██╔══██╗██╔══██╗██╔════╝██╔══██╗██╔══██╗    ██╔════╝██╔══██╗██║   ██║"
+            "████╗ ████║██╔══██╗",
+            "bold cyan",
+        ),
+        (
+            "██████╔╝██████╔╝█████╗  ███████║██║  ██║    ██║     ██████╔╝██║   ██║"
+            "██╔████╔██║██████╔╝",
+            "cyan",
+        ),
+        (
+            "██╔══██╗██╔══██╗██╔══╝  ██╔══██║██║  ██║    ██║     ██╔══██╗██║   ██║"
+            "██║╚██╔╝██║██╔══██╗",
+            "cyan",
+        ),
+        (
+            "██████╔╝██║  ██║███████╗██║  ██║██████╔╝    ╚██████╗██║  ██║╚██████╔╝"
+            "██║ ╚═╝ ██║██████╔╝",
+            "dim cyan",
+        ),
+        (
+            "╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═════╝      ╚═════╝╚═╝  ╚═╝ ╚═════╝ "
+            "╚═╝     ╚═╝╚═════╝ ",
+            "dim cyan",
+        ),
     ]
     for line, style in lines:
         console.print(f"[{style}]{line}[/{style}]")
@@ -525,7 +563,7 @@ def print_file_tree(files, root):
     tree = Tree(f"[bold cyan]{root.name}/[/bold cyan]")
     dirs = {"": tree}
     for f in files[:60]:
-        rel, parts, pk = f.relative_to(root), f.relative_to(root).parts, ""
+        parts, pk = f.relative_to(root).parts, ""
         for part in parts[:-1]:
             k = pk + "/" + part if pk else part
             if k not in dirs:
@@ -630,15 +668,22 @@ def run(repo_path, cfg):
         animate_scanning(f)
         return c, f
 
-    codebase, files = do_ingest()
+    _codebase, files = do_ingest()
     repo_name = root.name
 
     langs = {}
     for f in files:
-        k = f.suffix or f.name; langs[k] = langs.get(k, 0) + 1
-    top = "  ".join(f"[cyan]{e}[/cyan] [dim]{n}[/dim]"
-                    for e, n in sorted(langs.items(), key=lambda x: -x[1])[:6])
-    mode = "[green]live AI[/green]" if cfg.get("api_key") else "[yellow]prototype[/yellow] [dim](mock AI)[/dim]"
+        k = f.suffix or f.name
+        langs[k] = langs.get(k, 0) + 1
+    top = "  ".join(
+        f"[cyan]{e}[/cyan] [dim]{n}[/dim]"
+        for e, n in sorted(langs.items(), key=lambda x: -x[1])[:6]
+    )
+    mode = (
+        "[green]live AI[/green]"
+        if cfg.get("api_key")
+        else "[yellow]prototype[/yellow] [dim](mock AI)[/dim]"
+    )
 
     console.print(Panel(
         f"[bold]Repo:[/bold]    {root}\n"
@@ -661,35 +706,47 @@ def run(repo_path, cfg):
             console.print("\n[dim]History saved. Goodbye 🍞[/dim]")
             break
 
-        if not user_input: continue
+        if not user_input:
+            continue
         cmd = user_input.lower().strip()
 
         if cmd in ("exit","quit","q"):
             save_history(root, history)
-            console.print("[dim]History saved. Goodbye 🍞[/dim]"); break
+            console.print("[dim]History saved. Goodbye 🍞[/dim]")
+            break
 
         if cmd == "help":
-            console.print(Panel(HELP_TEXT, border_style="dim", padding=(0, 2))); continue
+            console.print(Panel(HELP_TEXT, border_style="dim", padding=(0, 2)))
+            continue
 
         if cmd == "clear":
-            history.clear(); save_history(root, history)
-            console.print("[dim]Chat history cleared.[/dim]\n"); continue
+            history.clear()
+            save_history(root, history)
+            console.print("[dim]Chat history cleared.[/dim]\n")
+            continue
 
         if cmd == "files":
-            print_file_table(files, root); continue
+            print_file_table(files, root)
+            continue
 
         if cmd == "tree":
-            print_file_tree(files, root); continue
+            print_file_tree(files, root)
+            continue
 
         if cmd == "export":
-            export_chat(history, repo_name); continue
+            export_chat(history, repo_name)
+            continue
 
         if cmd == "history":
             if not history:
                 console.print("[dim]No history yet.[/dim]\n")
             else:
                 for msg in history[-8:]:
-                    role  = "[bold cyan]you[/bold cyan]" if msg["role"]=="user" else "[bold dim]bread crumb[/bold dim]"
+                    role = (
+                        "[bold cyan]you[/bold cyan]"
+                        if msg["role"] == "user"
+                        else "[bold dim]bread crumb[/bold dim]"
+                    )
                     short = msg["content"][:100].replace("\n"," ")
                     console.print(f"  {role}: [dim]{short}…[/dim]")
                 console.print()
@@ -697,19 +754,24 @@ def run(repo_path, cfg):
 
         if cmd == "refresh":
             codebase, files = do_ingest()
-            console.print(f"[green]✓[/green] Re-indexed [bold]{len(files)}[/bold] files.\n"); continue
+            console.print(f"[green]✓[/green] Re-indexed [bold]{len(files)}[/bold] files.\n")
+            continue
 
         if cmd == "set-key":
-            cfg = setup_api_key(cfg); continue
+            cfg = setup_api_key(cfg)
+            continue
 
         if cmd.startswith("focus "):
             focus = cmd[6:].strip()
             codebase, files = do_ingest()
-            console.print(f"[green]✓[/green] Focused on [cyan]{focus}[/cyan] — {len(files)} files.\n"); continue
+            console.print(f"[green]✓[/green] Focused on [cyan]{focus}[/cyan] — {len(files)} files.\n")
+            continue
 
         if cmd == "focus":
-            focus = None; codebase, files = do_ingest()
-            console.print(f"[green]✓[/green] Focus cleared — {len(files)} files.\n"); continue
+            focus = None
+            codebase, files = do_ingest()
+            console.print(f"[green]✓[/green] Focus cleared — {len(files)} files.\n")
+            continue
 
         if cmd in QUICK:
             user_input = QUICK[cmd]
@@ -717,7 +779,7 @@ def run(repo_path, cfg):
         history.append({"role": "user", "content": user_input})
         history = trim_history(history)
 
-        console.print(f"\n[bold dim]🍞 bread crumb[/bold dim]")
+        console.print("\n[bold dim]🍞 bread crumb[/bold dim]")
         thinking_animation()
         response = get_mock_response(user_input, files, repo_name)
         stream_to_console(response)
