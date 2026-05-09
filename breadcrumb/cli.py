@@ -28,42 +28,54 @@ console = Console()
 
 def show_startup_screen() -> None:
     """Show a rich landing screen when the CLI is started without a command."""
-    console.print()
-    console.print(
-        Panel.fit(
-            "[bold cyan]🍞 Bread Crumb[/bold cyan]\n"
-            "[dim]Chat with your codebase from the terminal.[/dim]",
-            border_style="cyan",
-            padding=(1, 2),
+    try:
+        console.print()
+        console.print(
+            Panel.fit(
+                "[bold cyan]🍞 Bread Crumb[/bold cyan]\n"
+                "[dim]Chat with your codebase from the terminal.[/dim]",
+                border_style="cyan",
+                padding=(1, 2),
+            )
         )
-    )
 
-    table = Table(box=box.SIMPLE, show_header=False, expand=False, padding=(0, 1))
-    table.add_row("[cyan]ask[/cyan]", "Ask a one-shot question about the codebase")
-    table.add_row("[cyan]audit[/cyan]", "Run a security and architecture audit")
-    table.add_row("[cyan]chat[/cyan]", "Interactive chat with your codebase")
-    table.add_row("[cyan]diff[/cyan]", "Review a git diff with AI")
-    table.add_row("[cyan]commit[/cyan]", "Generate a conventional commit message")
-    table.add_row("[cyan]config[/cyan]", "Manage global configuration")
-    table.add_row("[cyan]init[/cyan]", "Initialize .breadcrumb.yaml in the repository")
-    console.print(table)
-
-    console.print()
-    console.print(
-        Panel(
-            "[yellow]⚠️  First time?[/yellow]\n"
-            "Set your API key:\n"
-            "[cyan]breadcrumb config set-key provider anthropic[/cyan]\n"
-            "[cyan]breadcrumb config set-key anthropic_key YOUR_KEY[/cyan]",
-            border_style="yellow",
-            padding=(1, 2),
+        table = Table(box=box.SIMPLE, show_header=False, expand=False, padding=(0, 1))
+        table.add_row("[cyan]ask[/cyan]", "Ask a one-shot question about the codebase")
+        table.add_row("[cyan]audit[/cyan]", "Run a security and architecture audit")
+        table.add_row("[cyan]chat[/cyan]", "Interactive chat with your codebase")
+        table.add_row("[cyan]diff[/cyan]", "Review a git diff with AI")
+        table.add_row("[cyan]commit[/cyan]", "Generate a conventional commit message")
+        table.add_row("[cyan]config[/cyan]", "Manage global configuration")
+        table.add_row(
+            "[cyan]init[/cyan]",
+            "Initialize .breadcrumb.yaml in the repository",
         )
-    )
+        console.print(table)
 
-    console.print("[dim]Run [cyan]breadcrumb --help[/cyan] for all options or")
-    console.print("[dim][cyan]breadcrumb chat .[/cyan] to start chatting.[/dim]")
-    console.print()
-    Prompt.ask("[dim]Press Enter to exit[/dim]", default="")
+        console.print()
+        console.print(
+            Panel(
+                "[yellow]⚠️  First time?[/yellow]\n"
+                "Set your API key:\n"
+                "[cyan]breadcrumb config set-key provider anthropic[/cyan]\n"
+                "[cyan]breadcrumb config set-key anthropic_key YOUR_KEY[/cyan]",
+                border_style="yellow",
+                padding=(1, 2),
+            )
+        )
+
+        console.print("[dim]Run [cyan]breadcrumb --help[/cyan] for all options or")
+        console.print("[dim][cyan]breadcrumb chat .[/cyan] to start chatting.[/dim]")
+        console.print()
+
+        # Try to prompt for input, but don't crash if stdin is unavailable
+        try:
+            Prompt.ask("[dim]Press Enter to exit[/dim]", default="")
+        except (EOFError, KeyboardInterrupt):
+            pass
+    except Exception as e:
+        # Silently handle any errors in startup screen
+        console.print(f"[dim]Note: Could not display full startup screen: {e}[/dim]")
 
 
 @click.group(invoke_without_command=True)
@@ -203,6 +215,9 @@ def main():
         else:
             console.print(f"[red]✗ Error:[/red] {e}")
         sys.exit(1)
+    except SystemExit:
+        # Allow normal exits
+        raise
     except Exception as e:
         error_msg = str(e)
         console.print(f"[red]✗ Error:[/red] {error_msg}")
@@ -217,4 +232,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        console.print(f"[red]Fatal error:[/red] {e}")
+        sys.exit(1)
