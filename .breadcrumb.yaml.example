@@ -1,0 +1,33 @@
+"""Example .breadcrumb.yaml configuration file."""
+
+# AI Provider: anthropic, openai, gemini, or ollama
+provider: anthropic
+
+# Model name for the chosen provider
+model: claude-3-5-sonnet-20241022
+
+# Patterns to ignore (like .gitignore)
+ignore_patterns:
+  - "*.min.js"
+  - "*.min.css"
+  - "dist/"
+  - "build/"
+  - "node_modules/"
+  - "vendor/"
+  - ".next/"
+  - ".nuxt/"
+  - "coverage/"
+
+# Custom system prompt for this repository
+# Gets prepended to all conversations
+system_prompt: |
+  You are a code reviewer analyzing a production application.
+  Be thorough but practical in your suggestions.
+  Prioritize security, performance, and maintainability.
+
+# Temperature for AI responses (0.0 - 1.0)
+# Lower = more consistent, Higher = more creative
+temperature: 0.7
+
+# Maximum tokens per request
+max_tokens: 4096
