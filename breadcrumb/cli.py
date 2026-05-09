@@ -47,8 +47,9 @@ def show_startup_screen() -> None:
     table.add_row("[cyan]init[/cyan]", "Initialize .breadcrumb.yaml in the repository")
     console.print(table)
     console.print(
-        "[dim]Run [cyan]breadcrumb --help[/cyan] for all options or [cyan]breadcrumb chat .[/cyan] to start chatting.[/dim]"
+        "[dim]Run [cyan]breadcrumb --help[/cyan] for all options or"
     )
+    console.print("[dim][cyan]breadcrumb chat .[/cyan] to start chatting.[/dim]")
 
 
 @click.group(invoke_without_command=True)
@@ -197,7 +198,9 @@ def main():
             console.print("[dim]Invalid API key or authentication failed.[/dim]")
             console.print("[yellow]Run: breadcrumb config show[/yellow] to check your settings")
         elif "404" in error_msg:
-            console.print("[dim]Resource not found. Check the repository path or API endpoint.[/dim]")
+            console.print(
+                "[dim]Resource not found. Check repository path or API."
+            )
         sys.exit(1)
 
 

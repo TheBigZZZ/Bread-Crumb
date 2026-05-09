@@ -50,12 +50,13 @@ def cmd_ask(
     # Check for API key upfront
     cfg = Config()
     active_provider = provider or cfg.get("provider", "anthropic")
-    
+
     if active_provider != "ollama":
         api_key = cfg.get_api_key(active_provider)
         if not api_key:
             console.print()
-            console.print("[red]✗ Error:[/red] No API key configured for [cyan]{}[/cyan]".format(active_provider))
+            msg = f"[red]✗ Error:[/red] No API key for [cyan]{active_provider}"
+            console.print(msg)
             console.print()
             console.print("[yellow]Setup instructions:[/yellow]")
             console.print(f"  breadcrumb config set-key provider {active_provider}")
