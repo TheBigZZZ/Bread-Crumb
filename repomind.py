@@ -241,7 +241,10 @@ def build_system_prompt(user_input):
         return get_system_prompt("commit")
     if any(w in inp for w in ("diff", "review changes", "code review")):
         return get_system_prompt("diff")
-    if any(w in inp for w in ("explain", "what does", "what is", "how does", "tell me about", "walk me through")):
+    if any(
+        w in inp
+        for w in ("explain", "what does", "what is", "how does", "tell me about", "walk me through")
+    ):
         return get_system_prompt("ask")
     return get_system_prompt("chat")
 
@@ -339,11 +342,15 @@ def setup_api_key(cfg):
         )
     )
 
-    provider = Prompt.ask(
-        "[cyan]Provider[/cyan]",
-        choices=["anthropic", "openai", "gemini", "ollama"],
-        default=cfg.get("provider", "anthropic"),
-    ).strip().lower()
+    provider = (
+        Prompt.ask(
+            "[cyan]Provider[/cyan]",
+            choices=["anthropic", "openai", "gemini", "ollama"],
+            default=cfg.get("provider", "anthropic"),
+        )
+        .strip()
+        .lower()
+    )
     cfg.set("provider", provider)
 
     if provider == "ollama":
@@ -565,7 +572,10 @@ def main():
     parser.add_argument("--setup", action="store_true", help="configure API key")
     args = parser.parse_args()
     cfg = load_config()
-    if args.setup or (cfg.get("provider", "anthropic") != "ollama" and not cfg.get_api_key(cfg.get("provider", "anthropic"))):
+    if args.setup or (
+        cfg.get("provider", "anthropic") != "ollama"
+        and not cfg.get_api_key(cfg.get("provider", "anthropic"))
+    ):
         cfg = setup_api_key(cfg)
     run(args.repo, cfg)
 
