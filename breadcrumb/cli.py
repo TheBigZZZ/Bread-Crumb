@@ -10,6 +10,7 @@ import click
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
+from rich.prompt import Prompt
 from rich.table import Table
 
 from breadcrumb import __version__
@@ -50,6 +51,8 @@ def show_startup_screen() -> None:
         "[dim]Run [cyan]breadcrumb --help[/cyan] for all options or"
     )
     console.print("[dim][cyan]breadcrumb chat .[/cyan] to start chatting.[/dim]")
+    console.print()
+    Prompt.ask("[dim]Press Enter to exit[/dim]", default="")
 
 
 @click.group(invoke_without_command=True)
