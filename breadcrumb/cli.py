@@ -47,6 +47,19 @@ def show_startup_screen() -> None:
     table.add_row("[cyan]config[/cyan]", "Manage global configuration")
     table.add_row("[cyan]init[/cyan]", "Initialize .breadcrumb.yaml in the repository")
     console.print(table)
+
+    console.print()
+    console.print(
+        Panel(
+            "[yellow]⚠️  First time?[/yellow]\n"
+            "Set your API key:\n"
+            "[cyan]breadcrumb config set-key provider anthropic[/cyan]\n"
+            "[cyan]breadcrumb config set-key anthropic_key YOUR_KEY[/cyan]",
+            border_style="yellow",
+            padding=(1, 2),
+        )
+    )
+
     console.print(
         "[dim]Run [cyan]breadcrumb --help[/cyan] for all options or"
     )
