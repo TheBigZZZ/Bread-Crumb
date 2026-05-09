@@ -87,6 +87,16 @@ Then run:
 ./breadcrumb ask "How does this work?"
 ```
 
+### TestPyPI Publishing
+
+Use TestPyPI when you want to validate packaging before a real release.
+
+1. Create a `TEST_PYPI_API_TOKEN` on [TestPyPI](https://test.pypi.org).
+2. Add it to GitHub as a repository secret named `TEST_PYPI_API_TOKEN`.
+3. Run the **Publish to TestPyPI** workflow from the Actions tab, or push a tag like `testpypi-v0.1.0`.
+
+This publishes to `https://test.pypi.org/legacy/` and does not create a GitHub Release.
+
 ### Option D: Docker
 ```bash
 docker run --rm \

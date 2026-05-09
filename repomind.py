@@ -10,7 +10,6 @@ Run:      python breadcrumb.py [repo_path]
 import argparse
 import hashlib
 import json
-import random
 import sys
 import time
 from datetime import datetime
@@ -26,6 +25,10 @@ from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 from rich.tree import Tree
+
+from breadcrumb.ai.prompts import get_system_prompt
+from breadcrumb.ai.router import AIRouter
+from breadcrumb.config import Config
 
 console = Console()
 
@@ -96,19 +99,11 @@ CODE_EXTS = {
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 def load_config():
-    APP_DIR.mkdir(exist_ok=True)
-    HISTORY_DIR.mkdir(exist_ok=True)
-    if CONFIG_FILE.exists():
-        try:
-            return json.loads(CONFIG_FILE.read_text())
-        except (json.JSONDecodeError, OSError):
-            pass
-    return {"api_key": "", "provider": "anthropic", "model": "claude-sonnet-4-6"}
+    return Config()
 
 
 def save_config(cfg):
-    APP_DIR.mkdir(exist_ok=True)
-    CONFIG_FILE.write_text(json.dumps(cfg, indent=2))
+    cfg.save()
 
 
 # ── History ────────────────────────────────────────────────────────────────────
@@ -238,380 +233,45 @@ def stream_to_console(response):
     console.print()
 
 
-# ── Mock responses ─────────────────────────────────────────────────────────────
-def get_mock_response(user_input, files, repo_name):
-    file_list = "\n".join(f"- `{f.name}`" for f in files[:6])
-    total_files = len(files)
+def build_system_prompt(user_input):
     inp = user_input.lower()
-
     if any(w in inp for w in ("audit", "security", "vulnerabilit", "secure")):
-        return f"""## 🔐 Security Audit — `{repo_name}`
+        return get_system_prompt("audit")
+    if any(w in inp for w in ("commit", "git commit", "conventional commit")):
+        return get_system_prompt("commit")
+    if any(w in inp for w in ("diff", "review changes", "code review")):
+        return get_system_prompt("diff")
+    if any(w in inp for w in ("explain", "what does", "what is", "how does", "tell me about", "walk me through")):
+        return get_system_prompt("ask")
+    return get_system_prompt("chat")
 
-### 🔴 CRITICAL
-- **Hardcoded secrets** — Scan for API keys, passwords, or tokens committed in source. Move to env vars and rotate immediately.
-- **SQL / NoSQL Injection** — Raw string interpolation in DB queries. Switch to parameterised queries everywhere.
 
-### 🟠 HIGH
-- **Missing input validation** — All user-supplied data must be validated at the entry point before reaching business logic.
-- **Dependency vulnerabilities** — Run `pip-audit` / `npm audit` / `cargo audit`. Known CVEs are trivial to exploit and trivial to fix.
-- **Broken access control** — Verify every resource endpoint checks ownership. Missing auth checks are silent data leaks.
+def get_ai_response(user_input, codebase, files, repo_name, cfg):
+    file_list = "\n".join(f"- `{f.name}`" for f in files[:12])
+    prompt = f"""Repository: `{repo_name}`
 
-### 🟡 MEDIUM
-- **Verbose error messages** — Stack traces must never reach end users. Log server-side, return generic messages to clients.
-- **No rate limiting** — Auth endpoints need rate limiting to prevent brute-force.
-- **Missing security headers** — Add `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`, CSP.
+Files indexed: {len(files)}
 
-### 🟢 LOW
-- **Commented-out debug code** — Remove before deploying. Reveals internal structure.
-- **Overly permissive CORS** — Replace `*` origins with an explicit allowlist.
-
-### ✅ What looks good
-- Code is separated into logical modules — makes auditing and patching easier.
-- Configuration appears separated from business logic.
-
-### 🎯 Fix in this order
-1. Rotate exposed secrets, move all credentials to env vars
-2. Parameterise every database query
-3. Add ownership checks to every resource endpoint
-4. Run dependency audit and patch critical CVEs
-
----
-*Prototype mode — add an API key (`set-key`) for analysis of your actual source code.*"""
-
-    if "promptify security" in inp or (
-        "promptify" in inp and any(w in inp for w in ("security", "fix", "vuln"))
-    ):
-        return f"""## 🪄 Promptify — Security Fix Prompt
-
-Copy and paste this into your AI agent:
-
----
-
-```
-I have a {total_files}-file codebase called `{repo_name}`.
-Please fix the following security issues:
-
-1. Find every hardcoded secret, API key, password, or token and replace with
-   environment variable references. Create a .env.example documenting each var.
-
-2. Find every database query using string interpolation or concatenation and
-   rewrite using parameterised queries.
-
-3. Add input validation and sanitisation to every route handler or function
-   that accepts external user input.
-
-4. Add ownership/authorisation checks to every endpoint that retrieves or
-   modifies a resource — ensure users can only access their own data.
-
-5. Replace all verbose error responses (stack traces, file paths, internal IDs)
-   with generic user-facing messages. Log full details server-side only.
-
-For each fix: show the file name, original code, and fixed code.
-Explain why each change matters. Prioritise CRITICAL issues first.
-```
-
----
-*Paste into Claude, ChatGPT, Cursor, or any coding agent.*"""
-
-    if "promptify test" in inp or ("promptify" in inp and "test" in inp):
-        return f"""## 🧪 Promptify — Test Generation Prompt
-
-Copy and paste this into your AI agent:
-
----
-
-```
-I have a codebase called `{repo_name}` with {total_files} source files.
-Generate a comprehensive test suite:
-
-1. UNIT TESTS
-   - Test every public function and method
-   - Cover happy path, edge cases, and error conditions
-   - Mock all external dependencies (DB, HTTP, filesystem)
-   - Single clear assertion per test, descriptive test names
-
-2. INTEGRATION TESTS
-   - Test every API endpoint or public interface end-to-end
-   - Include auth, validation, and error scenarios
-   - Use a test database — never production
-
-3. EDGE CASES
-   - Empty inputs, null values, missing fields
-   - Boundary values (max length, zero, negatives)
-   - Invalid auth and authorisation attempts
-
-4. QUALITY RULES
-   - Tests must be deterministic — mock time and randomness
-   - Test file names mirror source files (auth.ts → auth.test.ts)
-   - Target 80%+ coverage on business logic
-   - Comment explaining what each test block verifies
-
-Use the correct test framework for this stack.
-Show the complete test file for each source file covered.
-```
-
----
-*Paste into your agent to get a full test suite written.*"""
-
-    if "promptify refactor" in inp or ("promptify" in inp and "refactor" in inp):
-        return f"""## ♻️ Promptify — Refactor Prompt
-
-Copy and paste this into your AI agent:
-
----
-
-```
-Please refactor `{repo_name}` ({total_files} files) for quality and maintainability:
-
-1. ELIMINATE DUPLICATION
-   Extract repeated logic into shared utilities. No copy-pasted blocks.
-
-2. SIMPLIFY COMPLEX FUNCTIONS
-   Functions over 40 lines → break into smaller named sub-functions.
-   Deeply nested conditionals (3+ levels) → flatten with early returns.
-
-3. IMPROVE NAMING
-   Rename anything whose name doesn't clearly communicate its purpose.
-   Booleans start with is/has/can/should.
-
-4. SEPARATE CONCERNS
-   Business logic must not be mixed with HTTP handling or DB access.
-   Each module has a single clear responsibility.
-
-5. CONSISTENCY
-   Standardise error handling patterns across the codebase.
-   Standardise async patterns — no mixing callbacks with async/await.
-   Apply consistent formatting and naming conventions throughout.
-
-For each change: show before and after, explain the improvement.
-Do NOT change behaviour — only structure and clarity.
-```
-
----
-*Paste into your agent for a clean, consistent codebase.*"""
-
-    if "promptify doc" in inp or ("promptify" in inp and "doc" in inp):
-        return f"""## 📝 Promptify — Documentation Prompt
-
-Copy and paste this into your AI agent:
-
----
-
-```
-Generate comprehensive documentation for `{repo_name}` ({total_files} files):
-
-1. README.md — What it does, tech stack, prerequisites, installation,
-   how to run/test/deploy, environment variables table, project structure.
-
-2. INLINE DOCS — JSDoc/docstrings/Go doc comments on every public function:
-   what it does, parameters with types, return value, usage example.
-
-3. ARCHITECTURE.md — System structure and why, data flow end-to-end,
-   key design decisions, known limitations and future improvements.
-
-4. CONTRIBUTING.md — Dev environment setup, coding standards, how to run
-   tests, PR process and review expectations.
-
-Write for a developer joining the project for the first time.
-```
-
----
-*Paste into your agent to get complete project documentation.*"""
-
-    if "promptify" in inp and "performance" in inp:
-        return f"""## ⚡ Promptify — Performance Optimisation Prompt
-
-Copy and paste this into your AI agent:
-
----
-
-```
-Analyse `{repo_name}` ({total_files} files) for performance issues and fix them:
-
-1. DATABASE QUERIES — Find N+1 query patterns, missing indexes,
-   unoptimised queries. Rewrite with batching and eager loading.
-
-2. CACHING — Identify expensive repeated computations or DB calls
-   that should be cached. Add caching with appropriate TTLs.
-
-3. ASYNC / CONCURRENCY — Find sequential async operations that could
-   run in parallel. Replace with Promise.all / asyncio.gather / goroutines.
-
-4. MEMORY — Find memory leaks, large objects held in memory unnecessarily,
-   missing cleanup in event listeners or intervals.
-
-5. BUNDLE SIZE (if frontend) — Identify heavy dependencies that could be
-   replaced with lighter alternatives or lazy-loaded.
-
-For each issue: show the file, the problem, the fix, and the expected impact.
-```
-
----
-*Paste into your agent for measurable performance wins.*"""
-
-    if any(
-        w in inp for w in ("onboard", "new developer", "getting started", "explain the codebase")
-    ):
-        return f"""## 👋 New Developer Onboarding — `{repo_name}`
-
-### What this project does
-`{repo_name}` — a {total_files}-file project with a clear layered architecture.
-
-### Detected files
+Important files:
 {file_list}
 
-### 8 files to read first — in order
-1. **README.md** — Intent, setup, context
-2. **package.json / pyproject.toml / go.mod** — Dependencies and scripts
-3. **Main entry point** — How the app boots
-4. **Config / .env.example** — What to configure before running
-5. **Core models or types** — The data shapes everything is built around
-6. **Database / storage layer** — How data is persisted
-7. **API routes or controllers** — How the outside world talks to the app
-8. **Tests** — Best documentation of intended behaviour
+Repository context:
+{codebase}
 
-### Data flow
-```
-Request → Router → Middleware → Controller → Service → Repository → DB
-                                                                   ↓
-Response ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← Result
-```
+User request:
+{user_input}
 
-### ⚠️ Top 3 gotchas
-1. Copy `.env.example` → `.env` before running anything
-2. Run database migrations on first setup
-3. Read tests before refactoring — some patterns are intentional
+Answer directly using the repository context above. Do not invent details that are not supported by the codebase. If the context is insufficient, say exactly what is missing."""
 
----
-*Add an API key (`set-key`) for analysis grounded in your actual files.*"""
+    provider = cfg.get("provider", "anthropic")
+    router = AIRouter(provider)
+    router.model = cfg.get_model(provider)
+    messages = [{"role": "user", "content": prompt}]
 
-    if any(w in inp for w in ("risk", "dangerous", "fragile", "what could break")):
-        return f"""## ⚠️ Architectural Risks — `{repo_name}`
-
-### 🔴 Highest risk
-- **Central core modules** — The file everything imports. Config, DB connection, core utilities. Changing any signature here cascades everywhere.
-- **God files** — 500+ line files doing too many things. High coupling + high complexity = unpredictable changes.
-
-### 🟠 Medium risk
-- **Database schema** — Column renames break running apps. Write forward-compatible migrations.
-- **Auth logic** — Auth bugs are silent until catastrophic. Full test coverage before touching.
-- **Public API interfaces** — Treat every change as a breaking change.
-
-### 🟢 Lower risk
-- **Utility and helper files** — Narrow, focused, isolated.
-- **New modules with no dependents** — Self-contained additions.
-
-### Before changing anything high-risk
-1. Write a test for current behaviour first
-2. Make your change
-3. Verify the test still passes
-4. Check every file that imports what you changed
-
----
-*Add an API key (`set-key`) to get specific risky files identified by name.*"""
-
-    if any(w in inp for w in ("git", "commit", "history", "who wrote", "blame", "churn")):
-        return f"""## 📜 Git Insights — `{repo_name}`
-
-### What git history reveals
-**High-churn files** — Changed most often = either actively developed or constantly broken.
-```bash
-git log --name-only --pretty=format: | sort | uniq -c | sort -rn | head 20
-```
-
-**Files nobody touches** — Zero commits in 6+ months = dead code or rock-solid foundation.
-
-**Commit message patterns** — Many "fix", "hotfix", "again" on the same file = design problem.
-
-**Recent large diffs** — Sudden big changes = high regression risk.
-```bash
-git log --stat --oneline -20
-```
-
-### Most useful commands right now
-```bash
-# Most changed files ever
-git log --name-only --pretty=format: | sort | uniq -c | sort -rn | head 20
-
-# Who contributed what
-git shortlog -sn --all
-
-# What changed in the last week
-git log --oneline --since="1 week ago"
-
-# Visualise branch history
-git log --oneline --graph --all
-```
-
----
-*Add an API key (`set-key`) to get AI analysis of your actual commit patterns.*"""
-
-    if any(
-        w in inp
-        for w in ("explain", "what does", "what is", "how does", "tell me about", "walk me through")
-    ):
-        target = user_input
-        for w in (
-            "explain",
-            "what does",
-            "what is",
-            "how does",
-            "tell me about",
-            "walk me through",
-        ):
-            target = target.lower().replace(w, "")
-        target = target.strip().strip("?") or "this component"
-        return f"""## 📖 `{target}` — Explanation
-
-### What it does
-A focused component in `{repo_name}` with a specific responsibility. Takes inputs, applies defined logic, returns a value or produces a side effect.
-
-### Why it exists
-Logic extracted here rather than scattered across files — independently testable and reusable.
-
-### Dependencies
-- Imports from shared utilities, config, or data-access layer
-- May call external services or APIs
-
-### What depends on it
-Multiple modules import this — making it **medium-high risk** to modify without understanding the full call graph.
-
-### Risks of changing it
-- Signature changes silently break all callers in dynamic languages
-- Side effects (DB writes, network calls) need mocking in tests
-- In a hot path: performance changes matter
-
----
-*Add an API key (`set-key`) for this analysis on your actual code.*"""
-
-    # Fallback
-    fallbacks = [
-        f"""Looking at `{repo_name}` — {total_files} files indexed.
-
-The project has logical modules with clear separation of concerns. Most critical files are those with the highest inbound import count.
-
-**Top files:**
-{file_list}
-
-**What I'd suggest:** Follow the execution path of your most common user action from entry point to response. That single mental model makes everything else click.
-
-Try `audit`, `risks`, `onboard`, or any `promptify` command for deeper analysis.
-
----
-*Add an API key with `set-key` for answers grounded in your actual code.*""",
-        f"""Good question about `{repo_name}` ({total_files} files).
-
-The answer spans a few layers of the codebase:
-{file_list}
-
-Short version: the behaviour you're asking about lives in the core business logic layer, coordinated by a controller or handler, exposed through the interface layer.
-
-Name a specific file or function for a precise answer. Or try `audit`, `risks`, or a `promptify` command.
-
----
-*Add an API key with `set-key` for real AI analysis.*""",
-    ]
-    return random.choice(fallbacks)
+    response_text = ""
+    for chunk in router.stream(messages, build_system_prompt(user_input)):
+        response_text += chunk
+    return response_text
 
 
 # ── Export ─────────────────────────────────────────────────────────────────────
@@ -671,23 +331,39 @@ def setup_api_key(cfg):
     console.print()
     console.print(
         Panel(
-            "[bold]API Key Setup[/bold]\n\n"
-            "Bread Crumb works in [yellow]prototype mode[/yellow] without a key.\n"
-            "Add an Anthropic key to unlock real AI analysis of your code.\n\n"
-            "[dim]Key stored locally at ~/.breadcrumb/config.json[/dim]",
+            "[bold]AI Provider Setup[/bold]\n\n"
+            "Choose a provider and store its credentials locally.\n\n"
+            "[dim]Configuration is stored in ~/.breadcrumb/config.json[/dim]",
             border_style="cyan",
             padding=(0, 2),
         )
     )
-    key = Prompt.ask(
-        "\n[cyan]Anthropic API key[/cyan] [dim](Enter to skip)[/dim]", default=""
-    ).strip()
-    if key:
-        cfg["api_key"] = key
-        save_config(cfg)
-        console.print("[green]✓ API key saved.[/green]\n")
+
+    provider = Prompt.ask(
+        "[cyan]Provider[/cyan]",
+        choices=["anthropic", "openai", "gemini", "ollama"],
+        default=cfg.get("provider", "anthropic"),
+    ).strip().lower()
+    cfg.set("provider", provider)
+
+    if provider == "ollama":
+        url = Prompt.ask(
+            "[cyan]Ollama URL[/cyan]",
+            default=cfg.get("ollama_url", "http://localhost:11434"),
+        ).strip()
+        if url:
+            cfg.set("ollama_url", url)
+        console.print("[green]✓ Ollama settings saved.[/green]\n")
     else:
-        console.print("[dim]Skipped — running in prototype mode.[/dim]\n")
+        key = Prompt.ask(
+            f"\n[cyan]{provider.title()} API key[/cyan] [dim](Enter to skip)[/dim]",
+            default="",
+        ).strip()
+        if key:
+            cfg.set_api_key(provider, key)
+            console.print("[green]✓ API key saved.[/green]\n")
+        else:
+            console.print("[dim]No API key saved.[/dim]\n")
     return cfg
 
 
@@ -715,7 +391,7 @@ HELP_TEXT = """\
   [cyan]refresh[/cyan]                 Re-index the repo
   [cyan]export[/cyan]                  Save chat to markdown file
   [cyan]history[/cyan]                 Show recent chat history
-  [cyan]set-key[/cyan]                 Set or update your API key
+    [cyan]set-key[/cyan]                 Configure your AI provider credentials
   [cyan]clear[/cyan]                   Clear chat history
   [cyan]help[/cyan]                    Show this help
   [cyan]exit[/cyan]                    Quit
@@ -766,9 +442,8 @@ def run(repo_path, cfg):
         for e, n in sorted(langs.items(), key=lambda x: -x[1])[:6]
     )
     mode = (
-        "[green]live AI[/green]"
-        if cfg.get("api_key")
-        else "[yellow]prototype[/yellow] [dim](mock AI)[/dim]"
+        f"[green]{cfg.get('provider', 'anthropic')}[/green]"
+        f" [dim]{cfg.get_model(cfg.get('provider', 'anthropic'))}[/dim]"
     )
 
     console.print(
@@ -872,7 +547,11 @@ def run(repo_path, cfg):
 
         console.print("\n[bold dim]🍞 bread crumb[/bold dim]")
         thinking_animation()
-        response = get_mock_response(user_input, files, repo_name)
+        try:
+            response = get_ai_response(user_input, codebase, files, repo_name, cfg)
+        except Exception as e:
+            console.print(f"[red]AI error:[/red] {e}")
+            continue
         stream_to_console(response)
 
         history.append({"role": "assistant", "content": response})
@@ -886,7 +565,7 @@ def main():
     parser.add_argument("--setup", action="store_true", help="configure API key")
     args = parser.parse_args()
     cfg = load_config()
-    if args.setup or not cfg.get("api_key"):
+    if args.setup or (cfg.get("provider", "anthropic") != "ollama" and not cfg.get_api_key(cfg.get("provider", "anthropic"))):
         cfg = setup_api_key(cfg)
     run(args.repo, cfg)
 
