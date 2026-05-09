@@ -60,9 +60,7 @@ def show_startup_screen() -> None:
         )
     )
 
-    console.print(
-        "[dim]Run [cyan]breadcrumb --help[/cyan] for all options or"
-    )
+    console.print("[dim]Run [cyan]breadcrumb --help[/cyan] for all options or")
     console.print("[dim][cyan]breadcrumb chat .[/cyan] to start chatting.[/dim]")
     console.print()
     Prompt.ask("[dim]Press Enter to exit[/dim]", default="")
@@ -214,9 +212,7 @@ def main():
             console.print("[dim]Invalid API key or authentication failed.[/dim]")
             console.print("[yellow]Run: breadcrumb config show[/yellow] to check your settings")
         elif "404" in error_msg:
-            console.print(
-                "[dim]Resource not found. Check repository path or API."
-            )
+            console.print("[dim]Resource not found. Check repository path or API.")
         sys.exit(1)
 
 
