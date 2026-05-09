@@ -97,6 +97,16 @@ Use TestPyPI when you want to validate packaging before a real release.
 
 This publishes to `https://test.pypi.org/legacy/` and does not create a GitHub Release.
 
+### Repository secrets for releases
+
+If the GitHub release step fails with a 403 ("Resource not accessible by integration"), add a Personal Access Token (PAT) as a repository secret and use it as a fallback for the release action.
+
+1. Create a PAT (classic) with `repo` scope or a fine-grained token that allows `Contents: Read & write` and `Releases` permissions.
+2. In your repository Settings → Secrets → Actions, add a new secret named `GH_TOKEN` with that token value.
+3. The release workflow will use `GITHUB_TOKEN` by default; if you prefer a PAT, update the `create-release` step to set `GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}` in the step's `env` block.
+
+This gives the release job permission to create releases and upload artifacts when organization policies or token scope prevent the default token from working.
+
 ### Option D: Docker
 ```bash
 docker run --rm \

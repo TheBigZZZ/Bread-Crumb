@@ -5,6 +5,10 @@ on:
     tags:
       - v*
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -95,6 +99,9 @@ jobs:
       
       - name: Create Release
         uses: softprops/action-gh-release@v2
+        env:
+          # Optional: set GH_TOKEN secret if the default GITHUB_TOKEN is restricted
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           files: release-artifacts/**/*
           draft: false
