@@ -77,6 +77,7 @@ jobs:
           pip install pyinstaller -e .
       
       - name: Build with PyInstaller
+        shell: bash
         run: |
           pyinstaller --onefile \
             --name ${{ matrix.name }} \
