@@ -5,7 +5,7 @@ Install:  pip install rich
 Run:      python breadcrumb.py [repo_path]
 """
 
- # ruff: noqa: E501
+# ruff: noqa: E501
 
 import argparse
 import hashlib
@@ -30,25 +30,69 @@ from rich.tree import Tree
 console = Console()
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-APP_DIR       = Path.home() / ".breadcrumb"
-CONFIG_FILE   = APP_DIR / "config.json"
-HISTORY_DIR   = APP_DIR / "history"
+APP_DIR = Path.home() / ".breadcrumb"
+CONFIG_FILE = APP_DIR / "config.json"
+HISTORY_DIR = APP_DIR / "history"
 MAX_FILE_SIZE = 50_000
-MAX_TOTAL     = 180_000
+MAX_TOTAL = 180_000
 HISTORY_LIMIT = 20
 
 SKIP_DIRS = {
-    ".git","node_modules","__pycache__",".venv","venv","env",
-    "dist","build",".next",".nuxt","coverage","vendor","target",
-    ".cargo",".mypy_cache",".pytest_cache",
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "env",
+    "dist",
+    "build",
+    ".next",
+    ".nuxt",
+    "coverage",
+    "vendor",
+    "target",
+    ".cargo",
+    ".mypy_cache",
+    ".pytest_cache",
 }
 
 CODE_EXTS = {
-    ".py",".ts",".tsx",".js",".jsx",".go",".rs",".rb",".java",
-    ".cpp",".c",".h",".cs",".php",".swift",".kt",".sql",".graphql",
-    ".yaml",".yml",".toml",".json",".md",".html",".css",".scss",
-    ".vue",".svelte",".sh",".bash",".tf","Dockerfile","Makefile",".env.example",
+    ".py",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".go",
+    ".rs",
+    ".rb",
+    ".java",
+    ".cpp",
+    ".c",
+    ".h",
+    ".cs",
+    ".php",
+    ".swift",
+    ".kt",
+    ".sql",
+    ".graphql",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".json",
+    ".md",
+    ".html",
+    ".css",
+    ".scss",
+    ".vue",
+    ".svelte",
+    ".sh",
+    ".bash",
+    ".tf",
+    "Dockerfile",
+    "Makefile",
+    ".env.example",
 }
+
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 def load_config():
@@ -61,14 +105,17 @@ def load_config():
             pass
     return {"api_key": "", "provider": "anthropic", "model": "claude-sonnet-4-6"}
 
+
 def save_config(cfg):
     APP_DIR.mkdir(exist_ok=True)
     CONFIG_FILE.write_text(json.dumps(cfg, indent=2))
+
 
 # ── History ────────────────────────────────────────────────────────────────────
 def history_path(root):
     uid = hashlib.md5(str(root).encode()).hexdigest()[:10]
     return HISTORY_DIR / f"{root.name}_{uid}.json"
+
 
 def load_history(root):
     p = history_path(root)
@@ -79,24 +126,27 @@ def load_history(root):
             pass
     return []
 
+
 def save_history(root, history):
     history_path(root).write_text(json.dumps(history, indent=2))
 
+
 def trim_history(history):
     return history[-HISTORY_LIMIT:] if len(history) > HISTORY_LIMIT else history
+
 
 # ── Ingestion ──────────────────────────────────────────────────────────────────
 def should_include(path):
     return path.suffix in CODE_EXTS or path.name in CODE_EXTS
 
+
 def ingest_repo(root, focus=None):
     parts, total, files = [], 0, []
     scan_root = (root / focus) if focus and (root / focus).exists() else root
     all_files = sorted(
-        p for p in scan_root.rglob("*")
-        if p.is_file()
-        and not any(s in p.parts for s in SKIP_DIRS)
-        and should_include(p)
+        p
+        for p in scan_root.rglob("*")
+        if p.is_file() and not any(s in p.parts for s in SKIP_DIRS) and should_include(p)
     )
     for path in all_files:
         try:
@@ -105,15 +155,16 @@ def ingest_repo(root, focus=None):
             continue
         if len(content) > MAX_FILE_SIZE:
             content = content[:MAX_FILE_SIZE] + "\n...[truncated]"
-        rel   = path.relative_to(root)
+        rel = path.relative_to(root)
         chunk = f"\n\n### FILE: {rel}\n```\n{content}\n```"
         if total + len(chunk) > MAX_TOTAL:
-            parts.append(f"\n\n[{len(all_files)-len(files)} files omitted — context limit]")
+            parts.append(f"\n\n[{len(all_files) - len(files)} files omitted — context limit]")
             break
         parts.append(chunk)
         total += len(chunk)
         files.append(path)
     return "".join(parts), files
+
 
 # ── Animations ─────────────────────────────────────────────────────────────────
 def animate_banner():
@@ -154,6 +205,7 @@ def animate_banner():
         time.sleep(0.07)
     console.print()
 
+
 def animate_scanning(files):
     with Live(console=console, refresh_per_second=20) as live:
         for f in files[:25]:
@@ -162,17 +214,20 @@ def animate_scanning(files):
         live.update(Text(f"  ✓ Indexed {len(files)} files", style="green"))
         time.sleep(0.3)
 
+
 def thinking_animation(label="Thinking"):
-    frames = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
+    frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
     with Live(console=console, refresh_per_second=12) as live:
         for i in range(28):
             live.update(Text(f"  {frames[i % len(frames)]}  {label}...", style="dim cyan"))
             time.sleep(0.075)
 
+
 def mock_stream(text, delay=0.009):
     for char in text:
         yield char
         time.sleep(delay if char not in ("\n", " ") else delay * 0.15)
+
 
 def stream_to_console(response):
     rendered = ""
@@ -182,13 +237,14 @@ def stream_to_console(response):
             live.update(Markdown(rendered))
     console.print()
 
+
 # ── Mock responses ─────────────────────────────────────────────────────────────
 def get_mock_response(user_input, files, repo_name):
-    file_list   = "\n".join(f"- `{f.name}`" for f in files[:6])
+    file_list = "\n".join(f"- `{f.name}`" for f in files[:6])
     total_files = len(files)
-    inp         = user_input.lower()
+    inp = user_input.lower()
 
-    if any(w in inp for w in ("audit","security","vulnerabilit","secure")):
+    if any(w in inp for w in ("audit", "security", "vulnerabilit", "secure")):
         return f"""## 🔐 Security Audit — `{repo_name}`
 
 ### 🔴 CRITICAL
@@ -222,7 +278,9 @@ def get_mock_response(user_input, files, repo_name):
 ---
 *Prototype mode — add an API key (`set-key`) for analysis of your actual source code.*"""
 
-    if "promptify security" in inp or ("promptify" in inp and any(w in inp for w in ("security","fix","vuln"))):
+    if "promptify security" in inp or (
+        "promptify" in inp and any(w in inp for w in ("security", "fix", "vuln"))
+    ):
         return f"""## 🪄 Promptify — Security Fix Prompt
 
 Copy and paste this into your AI agent:
@@ -391,7 +449,9 @@ For each issue: show the file, the problem, the fix, and the expected impact.
 ---
 *Paste into your agent for measurable performance wins.*"""
 
-    if any(w in inp for w in ("onboard","new developer","getting started","explain the codebase")):
+    if any(
+        w in inp for w in ("onboard", "new developer", "getting started", "explain the codebase")
+    ):
         return f"""## 👋 New Developer Onboarding — `{repo_name}`
 
 ### What this project does
@@ -425,7 +485,7 @@ Response ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ←
 ---
 *Add an API key (`set-key`) for analysis grounded in your actual files.*"""
 
-    if any(w in inp for w in ("risk","dangerous","fragile","what could break")):
+    if any(w in inp for w in ("risk", "dangerous", "fragile", "what could break")):
         return f"""## ⚠️ Architectural Risks — `{repo_name}`
 
 ### 🔴 Highest risk
@@ -450,7 +510,7 @@ Response ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ← ←
 ---
 *Add an API key (`set-key`) to get specific risky files identified by name.*"""
 
-    if any(w in inp for w in ("git","commit","history","who wrote","blame","churn")):
+    if any(w in inp for w in ("git", "commit", "history", "who wrote", "blame", "churn")):
         return f"""## 📜 Git Insights — `{repo_name}`
 
 ### What git history reveals
@@ -486,10 +546,20 @@ git log --oneline --graph --all
 ---
 *Add an API key (`set-key`) to get AI analysis of your actual commit patterns.*"""
 
-    if any(w in inp for w in ("explain","what does","what is","how does","tell me about","walk me through")):
+    if any(
+        w in inp
+        for w in ("explain", "what does", "what is", "how does", "tell me about", "walk me through")
+    ):
         target = user_input
-        for w in ("explain","what does","what is","how does","tell me about","walk me through"):
-            target = target.lower().replace(w,"")
+        for w in (
+            "explain",
+            "what does",
+            "what is",
+            "how does",
+            "tell me about",
+            "walk me through",
+        ):
+            target = target.lower().replace(w, "")
         target = target.strip().strip("?") or "this component"
         return f"""## 📖 `{target}` — Explanation
 
@@ -543,20 +613,24 @@ Name a specific file or function for a precise answer. Or try `audit`, `risks`, 
     ]
     return random.choice(fallbacks)
 
+
 # ── Export ─────────────────────────────────────────────────────────────────────
 def export_chat(history, repo_name):
     if not history:
         console.print("[dim]No chat history to export.[/dim]")
         return
-    ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"breadcrumb_export_{repo_name}_{ts}.md"
-    lines    = [f"# Bread Crumb Export — `{repo_name}`\n",
-                f"*{datetime.now().strftime('%Y-%m-%d %H:%M')}*\n\n---\n"]
+    lines = [
+        f"# Bread Crumb Export — `{repo_name}`\n",
+        f"*{datetime.now().strftime('%Y-%m-%d %H:%M')}*\n\n---\n",
+    ]
     for msg in history:
         role = "**You**" if msg["role"] == "user" else "**Bread Crumb**"
         lines.append(f"\n### {role}\n{msg['content']}\n")
     Path(filename).write_text("\n".join(lines))
     console.print(f"[green]✓[/green] Exported to [cyan]{filename}[/cyan]")
+
 
 # ── File views ─────────────────────────────────────────────────────────────────
 def print_file_tree(files, root):
@@ -572,32 +646,42 @@ def print_file_tree(files, root):
         dirs[pk].add(f"[white]{parts[-1]}[/white]")
     console.print(tree)
     if len(files) > 60:
-        console.print(f"[dim]  ... and {len(files)-60} more[/dim]")
+        console.print(f"[dim]  ... and {len(files) - 60} more[/dim]")
+
 
 def print_file_table(files, root):
-    t = Table(box=box.SIMPLE, show_header=True, header_style="bold cyan", padding=(0,1))
+    t = Table(box=box.SIMPLE, show_header=True, header_style="bold cyan", padding=(0, 1))
     t.add_column("File", style="white")
     t.add_column("Type", style="dim")
     t.add_column("Size", justify="right", style="dim")
     for f in sorted(files, key=lambda x: -x.stat().st_size)[:40]:
         sz = f.stat().st_size
-        t.add_row(str(f.relative_to(root)), f.suffix or f.name,
-                  f"{sz:,} B" if sz < 1024 else f"{sz//1024} KB")
+        t.add_row(
+            str(f.relative_to(root)),
+            f.suffix or f.name,
+            f"{sz:,} B" if sz < 1024 else f"{sz // 1024} KB",
+        )
     if len(files) > 40:
-        t.add_row(f"[dim]... and {len(files)-40} more[/dim]","","")
+        t.add_row(f"[dim]... and {len(files) - 40} more[/dim]", "", "")
     console.print(t)
+
 
 # ── API key setup ──────────────────────────────────────────────────────────────
 def setup_api_key(cfg):
     console.print()
-    console.print(Panel(
-        "[bold]API Key Setup[/bold]\n\n"
-        "Bread Crumb works in [yellow]prototype mode[/yellow] without a key.\n"
-        "Add an Anthropic key to unlock real AI analysis of your code.\n\n"
-        "[dim]Key stored locally at ~/.breadcrumb/config.json[/dim]",
-        border_style="cyan", padding=(0,2)
-    ))
-    key = Prompt.ask("\n[cyan]Anthropic API key[/cyan] [dim](Enter to skip)[/dim]", default="").strip()
+    console.print(
+        Panel(
+            "[bold]API Key Setup[/bold]\n\n"
+            "Bread Crumb works in [yellow]prototype mode[/yellow] without a key.\n"
+            "Add an Anthropic key to unlock real AI analysis of your code.\n\n"
+            "[dim]Key stored locally at ~/.breadcrumb/config.json[/dim]",
+            border_style="cyan",
+            padding=(0, 2),
+        )
+    )
+    key = Prompt.ask(
+        "\n[cyan]Anthropic API key[/cyan] [dim](Enter to skip)[/dim]", default=""
+    ).strip()
     if key:
         cfg["api_key"] = key
         save_config(cfg)
@@ -605,6 +689,7 @@ def setup_api_key(cfg):
     else:
         console.print("[dim]Skipped — running in prototype mode.[/dim]\n")
     return cfg
+
 
 # ── Help ───────────────────────────────────────────────────────────────────────
 HELP_TEXT = """\
@@ -638,16 +723,17 @@ HELP_TEXT = """\
 [dim]Or just ask anything in plain English about your codebase.[/dim]"""
 
 QUICK = {
-    "audit":                "perform a full security and architecture audit",
-    "onboard":              "give me a new developer onboarding guide for this codebase",
-    "risks":                "what are the top architectural risks and most dangerous files to change",
-    "git":                  "give me git history insights",
-    "promptify security":   "promptify security",
-    "promptify tests":      "promptify tests",
-    "promptify refactor":   "promptify refactor",
-    "promptify docs":       "promptify docs",
-    "promptify performance":"promptify performance",
+    "audit": "perform a full security and architecture audit",
+    "onboard": "give me a new developer onboarding guide for this codebase",
+    "risks": "what are the top architectural risks and most dangerous files to change",
+    "git": "give me git history insights",
+    "promptify security": "promptify security",
+    "promptify tests": "promptify tests",
+    "promptify refactor": "promptify refactor",
+    "promptify docs": "promptify docs",
+    "promptify performance": "promptify performance",
 }
+
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 def run(repo_path, cfg):
@@ -660,7 +746,7 @@ def run(repo_path, cfg):
     console.print(Rule(style="dim cyan"))
 
     history = load_history(root)
-    focus   = None
+    focus = None
 
     def do_ingest():
         with console.status("[cyan]Reading codebase...[/cyan]", spinner="dots"):
@@ -685,15 +771,18 @@ def run(repo_path, cfg):
         else "[yellow]prototype[/yellow] [dim](mock AI)[/dim]"
     )
 
-    console.print(Panel(
-        f"[bold]Repo:[/bold]    {root}\n"
-        f"[bold]Files:[/bold]   {len(files)} indexed\n"
-        f"[bold]Lang:[/bold]    {top}\n"
-        f"[bold]Mode:[/bold]    {mode}\n"
-        f"[bold]History:[/bold] {len(history)} messages loaded",
-        title="[bold cyan]🍞 Bread Crumb[/bold cyan]",
-        border_style="cyan", padding=(0, 2),
-    ))
+    console.print(
+        Panel(
+            f"[bold]Repo:[/bold]    {root}\n"
+            f"[bold]Files:[/bold]   {len(files)} indexed\n"
+            f"[bold]Lang:[/bold]    {top}\n"
+            f"[bold]Mode:[/bold]    {mode}\n"
+            f"[bold]History:[/bold] {len(history)} messages loaded",
+            title="[bold cyan]🍞 Bread Crumb[/bold cyan]",
+            border_style="cyan",
+            padding=(0, 2),
+        )
+    )
     console.print()
     console.print(Panel(HELP_TEXT, border_style="dim", padding=(0, 2)))
     console.print()
@@ -710,7 +799,7 @@ def run(repo_path, cfg):
             continue
         cmd = user_input.lower().strip()
 
-        if cmd in ("exit","quit","q"):
+        if cmd in ("exit", "quit", "q"):
             save_history(root, history)
             console.print("[dim]History saved. Goodbye 🍞[/dim]")
             break
@@ -747,7 +836,7 @@ def run(repo_path, cfg):
                         if msg["role"] == "user"
                         else "[bold dim]bread crumb[/bold dim]"
                     )
-                    short = msg["content"][:100].replace("\n"," ")
+                    short = msg["content"][:100].replace("\n", " ")
                     console.print(f"  {role}: [dim]{short}…[/dim]")
                 console.print()
             continue
@@ -764,7 +853,9 @@ def run(repo_path, cfg):
         if cmd.startswith("focus "):
             focus = cmd[6:].strip()
             codebase, files = do_ingest()
-            console.print(f"[green]✓[/green] Focused on [cyan]{focus}[/cyan] — {len(files)} files.\n")
+            console.print(
+                f"[green]✓[/green] Focused on [cyan]{focus}[/cyan] — {len(files)} files.\n"
+            )
             continue
 
         if cmd == "focus":
@@ -788,15 +879,17 @@ def run(repo_path, cfg):
         history = trim_history(history)
         save_history(root, history)
 
+
 def main():
     parser = argparse.ArgumentParser(description="🍞 Bread Crumb — chat with your codebase")
     parser.add_argument("repo", nargs="?", default=".", help="path to repository")
     parser.add_argument("--setup", action="store_true", help="configure API key")
-    args   = parser.parse_args()
-    cfg    = load_config()
+    args = parser.parse_args()
+    cfg = load_config()
     if args.setup or not cfg.get("api_key"):
         cfg = setup_api_key(cfg)
     run(args.repo, cfg)
+
 
 if __name__ == "__main__":
     main()

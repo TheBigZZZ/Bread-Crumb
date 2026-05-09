@@ -134,7 +134,7 @@ class FileIngester:
         Large files get truncated; if total exceeds max_total, files are skipped.
         """
         files = self.get_files()
-        content_parts = []
+        content_parts: list[str] = []
         total_size = 0
 
         for file_path in files:

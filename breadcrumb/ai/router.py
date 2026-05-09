@@ -64,7 +64,8 @@ class AIRouter:
             messages=messages,
             temperature=kwargs.get("temperature", 0.7),
         )
-        return response.content[0].text
+        text = getattr(response.content[0], "text", "")
+        return text or ""
 
     def _stream_anthropic(self, messages: list, system: str = "", **kwargs) -> Iterator[str]:
         """Stream response from Anthropic."""
@@ -101,7 +102,7 @@ class AIRouter:
             max_tokens=kwargs.get("max_tokens", 4096),
             temperature=kwargs.get("temperature", 0.7),
         )
-        return response.choices[0].message.content
+        return response.choices[0].message.content or ""
 
     def _stream_openai(self, messages: list, system: str = "", **kwargs) -> Iterator[str]:
         """Stream response from OpenAI."""
